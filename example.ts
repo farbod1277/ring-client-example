@@ -17,25 +17,6 @@ async function example() {
     `Found ${locations.length} location(s) with ${allCameras.length} camera(s).`
   );
 
-  ringApi.onRefreshTokenUpdated.subscribe(
-    async ({ newRefreshToken, oldRefreshToken }) => {
-      console.log("Refresh Token Updated: ", newRefreshToken);
-
-      // If you are implementing a project that use `ring-client-api`, you should subscribe to onRefreshTokenUpdated and update your config each time it fires an event
-      // Here is an example using a .env file for configuration
-      if (!oldRefreshToken) {
-        return;
-      }
-
-      const currentConfig = await promisify(readFile)(".env"),
-        updatedConfig = currentConfig
-          .toString()
-          .replace(oldRefreshToken, newRefreshToken);
-
-      await promisify(writeFile)(".env", updatedConfig);
-    }
-  );
-
   for (const location of locations) {
     let haveConnected = false;
     location.onConnected.subscribe((connected) => {
@@ -71,26 +52,26 @@ async function example() {
     }
   }
 
+  // Record for 20s
   if (allCameras.length) {
     allCameras.forEach((camera) => {
-      camera.onNewNotification.subscribe(({ ding, subtype }) => {
-        const event =
-          ding.detection_type === "motion"
-            ? "Motion detected"
-            : subtype === "ding"
-            ? "Doorbell pressed"
-            : `Video started (${subtype})`;
-
-        console.log(
-          `${event} on ${camera.name} camera. Ding id ${
-            ding.id
-          }.  Received at ${new Date()}`
-        );
-      });
+      const filename: string = `/home/torabi_home/ring-client-example/videos/vid_${getCurrentDateTime()}.mp4`;
+      camera.recordToFile(filename, 20);
+      console.log('Recorded Video on Notification.');
     });
-
-    console.log("Listening for motion and doorbell presses on your cameras.");
   }
+}
+
+function getCurrentDateTime(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0'); // Adding 1 because getMonth() returns 0-indexed month
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
 }
 
 example();
